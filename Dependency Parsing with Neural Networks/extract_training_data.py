@@ -1,8 +1,8 @@
 from conll_reader import DependencyStructure, conll_reader
 from collections import defaultdict
+from tensorflow import keras
 import copy
 import sys
-import keras
 import numpy as np
 
 class State(object):
@@ -104,7 +104,7 @@ class FeatureExtractor(object):
         for rel in dep_relations:
             labels.append(("left_arc",rel))
             labels.append(("right_arc",rel))
-        return dict((label, index) for (index,label) in enumerate(labels))
+        return dict((label, index) for (index, label) in enumerate(labels))
 
     def read_vocab(self,vocab_file):
         vocab = {}
@@ -115,12 +115,69 @@ class FeatureExtractor(object):
         return vocab     
 
     def get_input_representation(self, words, pos, state):
-        # TODO: Write this method for Part 2
-        return np.zeros(6)
+        stack = state.stack
+        len_stack = len(stack)
+        buffer = state.buffer
+        len_buffer = len(buffer)
 
-    def get_output_representation(self, output_pair):  
-        # TODO: Write this method for Part 2
-        return np.zeros(91)
+        index_null = 4
+        index_root = 3
+        index_cd = 0
+        index_nnp = 1
+        index_unk = 2
+
+        result = []
+        for i in range(3):
+            if i >= len_stack:
+                result.append(index_null)
+            else:
+                # need to extract -1, -2, -3 element on stack
+                indexi = -1-i
+                # 0 means root
+                # the other IDs start from 1
+                indi = stack[indexi]
+                if indi == 0:
+                    result.append(index_root)
+                else:
+                    wordi = words[indi]
+                    pi = pos[indi]
+                    if pi == "CD":
+                        result.append(index_cd)
+                    elif pi == "NNP":
+                        result.append(index_nnp)
+                    elif wordi in self.word_vocab:
+                        result.append(self.word_vocab[wordi])
+                    else:
+                        result.append(index_unk)
+
+        for j in range(3):
+            if j >= len_buffer:
+                result.append(index_null)
+            else:
+                indexj = -1-j
+                indj = buffer[indexj]
+                if indj == 0:
+                    result.append(index_root)
+                else:
+                    wordj = words[indj]
+                    pj = pos[indj]
+                    if pj == "CD":
+                        result.append(index_cd)
+                    elif pj == "NNP":
+                        result.append(index_nnp)
+                    elif wordj in self.word_vocab:
+                        result.append(self.word_vocab[wordj])
+                    else:
+                        result.append(index_unk)
+
+        return np.array(result)
+
+    def get_output_representation(self, output_pair):
+        result = [0] * 91
+        position = self.output_labels[output_pair]
+        result[position] = 1
+
+        return np.array(result)
 
      
     
@@ -138,6 +195,7 @@ def get_training_matrices(extractor, in_file):
             sys.stdout.write(".")
             sys.stdout.flush()
         count += 1
+
     sys.stdout.write("\n")
     return np.vstack(inputs),np.vstack(outputs)
        

@@ -2,6 +2,8 @@ from decoder import Parser
 from extract_training_data import FeatureExtractor
 from conll_reader import conll_reader
 import sys
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
 
 
 def compare_parser(target, predict):

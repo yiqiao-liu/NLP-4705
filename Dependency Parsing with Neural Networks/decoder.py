@@ -4,7 +4,7 @@ import copy
 import sys
 
 import numpy as np
-import keras
+from tensorflow import keras
 
 from extract_training_data import FeatureExtractor, State
 
@@ -21,9 +21,27 @@ class Parser(object):
         state = State(range(1,len(words)))
         state.stack.append(0)    
 
-        while state.buffer: 
-            pass
-            # TODO: Write the body of this loop for part 4 
+        while state.buffer:
+            representation = self.extractor.get_input_representation(words, pos, state)
+            actions = self.model.predict(np.array([representation,]))
+            index = np.flip(np.argsort(actions[0]))
+
+            for i in index:
+                (rel, label) = self.output_labels[i]
+                if rel == "shift":
+                    if len(state.buffer) != 1 or len(state.stack) == 0:
+                        state.shift()
+                        break
+                elif rel == "left_arc":
+                    if len(state.stack) != 0:
+                        top_stack = state.stack[-1]
+                        if top_stack != 0:
+                            state.left_arc(label)
+                            break
+                elif rel == "right_arc":
+                    if len(state.stack) != 0:
+                        state.right_arc(label)
+                        break
 
         result = DependencyStructure()
         for p,c,r in state.deps: 
@@ -53,4 +71,3 @@ if __name__ == "__main__":
             deps = parser.parse_sentence(words, pos)
             print(deps.print_conll())
             print()
-        
