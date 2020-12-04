@@ -201,14 +201,23 @@ class BertPredictor(object):
         best_words = np.argsort(predictions[0][mask_index])[::-1]
         words = self.tokenizer.convert_ids_to_tokens(best_words, skip_special_tokens=False)
 
-        for x in words:
-            if x in candidates:
-                return x
+        dic = {}
+        for can in candidates:
+            if can in words:
+                dic[can] = -words.index(can)
 
-        return None
+        return max(dic, key=lambda x: dic[x])
 
 
 class MyPredictor(object):
+
+    '''
+    Total = 298, attempted = 298
+    precision = 0.131, recall = 0.131
+    Total
+    with mode 206 attempted 206
+    precision = 0.184, recall = 0.184
+    '''
 
     def __init__(self, filename):
         self.model1 = gensim.models.KeyedVectors.load_word2vec_format(filename, binary=True)
@@ -216,9 +225,6 @@ class MyPredictor(object):
         self.model2 = transformers.TFDistilBertForMaskedLM.from_pretrained('distilbert-base-uncased')
 
     def predict(self, context: Context):
-        lesk_result = wn_simple_lesk_predictor(context)
-        if lesk_result != None:
-            return lesk_result
 
         lemma = context.lemma
         pos = context.pos
@@ -237,9 +243,13 @@ class MyPredictor(object):
 
         dic = {}
         for can in candidates:
-            if can in self.model1.wv and can in words:
+            if can in self.model1.wv:
                 sim = self.model1.similarity(lemma, can)
-                dic[can] = -words.index(can) + 10 * sim
+                if pos == 'v':
+                    dic[can] = sim
+                else:
+                    if can in words:
+                        dic[can] = -words.index(can) + 10 * sim
 
         return max(dic, key=lambda x: dic[x])
 
@@ -248,17 +258,9 @@ class MyPredictor(object):
 
 if __name__=="__main__":
 
-    # At submission time, this program should run your best predictor (part 6).
-    '''
-    for context in read_lexsub_xml(sys.argv[1]):
-        prediction = wn_simple_lesk_predictor(context)
-        print("{}.{} {} :: {}".format(context.lemma, context.pos, context.cid, prediction))
-    '''
-
     W2VMODEL_FILENAME = 'GoogleNews-vectors-negative300.bin.gz'
     predictor = MyPredictor(W2VMODEL_FILENAME)
 
     for context in read_lexsub_xml(sys.argv[1]):
-        #print(context)  # useful for debugging
         prediction = predictor.predict(context)
         print("{}.{} {} :: {}".format(context.lemma, context.pos, context.cid, prediction))
