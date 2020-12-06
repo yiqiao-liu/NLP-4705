@@ -258,6 +258,7 @@ class MyPredictor(object):
 
 if __name__=="__main__":
 
+
     W2VMODEL_FILENAME = 'GoogleNews-vectors-negative300.bin.gz'
     predictor = MyPredictor(W2VMODEL_FILENAME)
 
